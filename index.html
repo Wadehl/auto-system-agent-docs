@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Auto System Agent 的组件边界、运行流程、数据归属与部署限制。">
+  <title>系统架构 · Auto System Agent</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #f7f8fa;
+      --surface: #fff;
+      --ink: #202735;
+      --muted: #697386;
+      --subtle: #8993a4;
+      --line: #e7eaf0;
+      --blue: #4263eb;
+      --blue-wash: #edf2ff;
+      --green: #24855b;
+      --green-wash: #edf8f2;
+      --amber: #9b6614;
+      --amber-wash: #fff7e8;
+      --shadow: 0 8px 28px rgba(28, 39, 60, .045);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 28px; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-size: 15px; line-height: 1.75; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { padding: .13em .4em; border: 1px solid #e8ebf1; border-radius: 5px; background: #f4f6f9; color: #46516a; font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 204px; gap: 32px; width: min(1440px, 100%); min-height: 100vh; margin: 0 auto; padding: 32px 36px 72px; }
+    .sidebar, .toc { position: sticky; top: 28px; align-self: start; max-height: calc(100vh - 56px); overflow: auto; }
+    .brand { display: flex; gap: 11px; align-items: center; margin: 2px 0 30px; font-size: 14px; font-weight: 700; letter-spacing: -.02em; }
+    .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--blue); color: white; font-size: 14px; }
+    .side-label, .toc-label { margin: 0 0 10px 11px; color: var(--subtle); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+    .nav { display: grid; gap: 3px; }
+    .nav a { padding: 7px 11px; border-radius: 7px; color: #596477; font-size: 13px; }
+    .nav a:hover { background: #eef1f6; text-decoration: none; }
+    .nav a.active { background: var(--blue-wash); color: #3556ce; font-weight: 600; }
+    .side-foot { margin: 28px 4px 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.6; }
+    main { min-width: 0; }
+    .breadcrumb { margin: 0 0 12px; color: var(--subtle); font-size: 12px; }
+    h1 { margin: 0; font-size: clamp(30px, 4vw, 42px); line-height: 1.2; letter-spacing: -.045em; }
+    .lead { max-width: 760px; margin: 16px 0 25px; color: #5f6b7e; font-size: 17px; line-height: 1.75; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 27px; }
+    .pill { padding: 4px 9px; border: 1px solid var(--line); border-radius: 99px; background: white; color: #667185; font-size: 11px; }
+    .hero-card, .section-card { margin: 0 0 20px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); box-shadow: var(--shadow); }
+    .hero-card { overflow: hidden; }
+    .card-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 19px 22px 14px; }
+    .card-head h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .card-head span { color: var(--subtle); font-size: 12px; }
+    .diagram-frame { display: block; width: 100%; height: min(78vh, 850px); min-height: 600px; border: 0; border-top: 1px solid var(--line); background: #fbfcfe; }
+    .section-card { padding: 24px 26px; scroll-margin-top: 24px; }
+    .eyebrow { margin: 0 0 4px; color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    h2 { margin: 0 0 13px; font-size: 22px; line-height: 1.35; letter-spacing: -.03em; }
+    h3 { margin: 23px 0 8px; font-size: 16px; letter-spacing: -.015em; }
+    p { margin: 8px 0 12px; color: #4e596b; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 17px; }
+    .mini-card { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fcfcfd; }
+    .mini-card h3 { margin: 0 0 7px; font-size: 14px; }
+    .mini-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .callout { margin: 16px 0 4px; padding: 14px 16px; border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; background: var(--blue-wash); color: #3c4d83; font-size: 13px; }
+    .callout.green { border-color: var(--green); background: var(--green-wash); color: #386b53; }
+    .callout.amber { border-color: #d49a38; background: var(--amber-wash); color: #795a28; }
+    .table-wrap { overflow-x: auto; margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f8f9fb; color: #697386; font-size: 11px; font-weight: 700; }
+    td { color: #4e596b; }
+    td:first-child { min-width: 132px; color: #2d3748; font-weight: 600; }
+    .steps { display: grid; gap: 0; margin: 18px 0 0; padding: 0; list-style: none; counter-reset: steps; }
+    .steps li { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 0 0 19px; counter-increment: steps; }
+    .steps li::before { content: counter(steps); display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #dce3f2; border-radius: 50%; background: #f2f5ff; color: var(--blue); font-size: 12px; font-weight: 700; }
+    .steps li:not(:last-child)::after { position: absolute; top: 29px; bottom: 0; left: 13px; width: 1px; background: var(--line); content: ""; }
+    .steps strong { display: block; margin: 1px 0 2px; font-size: 14px; }
+    .steps span { color: var(--muted); font-size: 13px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 15px; }
+    .split > div { padding: 15px 16px; border: 1px solid var(--line); border-radius: 10px; }
+    .split h3 { margin: 0 0 6px; }
+    .split p { margin: 0; font-size: 13px; }
+    .toc { padding-top: 57px; }
+    .toc nav { display: grid; gap: 5px; border-left: 1px solid #dfe3ea; }
+    .toc a { margin-left: -1px; padding: 4px 0 4px 13px; border-left: 1px solid transparent; color: #778195; font-size: 12px; line-height: 1.45; }
+    .toc a:hover, .toc a.active { border-color: var(--blue); color: #3e5ed0; text-decoration: none; }
+    .refs { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+    .refs li { padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: #fcfcfd; font-size: 13px; }
+    .refs small { display: block; margin-top: 2px; color: var(--muted); }
+    .footer { padding: 8px 4px; color: var(--subtle); font-size: 12px; }
+    @media (max-width: 1120px) { .layout { grid-template-columns: 205px minmax(0, 1fr); gap: 24px; padding-inline: 24px; } .toc { display: none; } }
+    @media (max-width: 720px) { .layout { display: block; padding: 18px 14px 46px; } .sidebar { position: static; max-height: none; margin-bottom: 24px; } .brand { margin-bottom: 13px; } .side-label, .side-foot { display: none; } .nav { display: flex; overflow-x: auto; padding-bottom: 5px; } .nav a { flex: 0 0 auto; } .lead { font-size: 15px; } .diagram-frame { min-height: 520px; height: 68vh; } .section-card { padding: 19px 17px; } .grid-3, .split { grid-template-columns: 1fr; } }
+    @media print { .layout { display: block; width: auto; padding: 0; } .sidebar, .toc { display: none; } .hero-card, .section-card { box-shadow: none; break-inside: avoid; } .diagram-frame { height: 760px; } a { color: inherit; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="文档导航">
+      <div class="brand"><span class="brand-mark">A</span><span>Auto System Agent</span></div>
+      <p class="side-label">项目文档</p>
+      <nav class="nav">
+        <a class="active" href="#overview">架构总览</a>
+        <a href="#positioning">设计定位</a>
+        <a href="#components">组件职责</a>
+        <a href="#entities">核心对象</a>
+        <a href="#run-flow">一次运行如何发生</a>
+        <a href="#workspace">快照与 Patch</a>
+        <a href="#recovery">会话与恢复</a>
+        <a href="#security">安全与扩展边界</a>
+        <a href="#multica">与 Multica 的关系</a>
+        <a href="#references">参考与代码入口</a>
+      </nav>
+      <div class="side-foot">这份说明描述当前本地单用户实现。尚未实现的云端部署能力会明确标出，不应视为现成功能。</div>
+    </aside>
+
+    <main>
+      <p class="breadcrumb">文档 <span aria-hidden="true">/</span> 架构</p>
+      <h1>系统架构</h1>
+      <p class="lead">Auto System Agent 为现有自动化 Editor 提供独立的 Agent 工作台。它把对话与协调留在 Web / Go API，把 Claude Runtime 放在本机 Daemon 中运行；Editor 仍是页面内容与最终保存状态的权威来源。</p>
+      <div class="meta-row"><span class="pill">架构说明</span><span class="pill">当前实现：本地单用户</span><span class="pill">组件图可交互</span><span class="pill">更新：2026-09-29</span></div>
+
+      <section class="hero-card" id="overview" aria-labelledby="diagram-title">
+        <div class="card-head"><h2 id="diagram-title">组件关系与数据边界</h2><span>可缩放、聚焦和切换视图</span></div>
+        <iframe class="diagram-frame" title="Auto System Agent 交互式架构图" src="./auto-system-agent-architecture-map.html" loading="lazy"></iframe>
+      </section>
+
+      <section class="section-card" id="positioning">
+        <p class="eyebrow">01 · 定位</p>
+        <h2>为 Editor 增加 Agent 工作台，不改造原自动化后端</h2>
+        <p>Editor 仍由现有自动化平台启动、编辑和保存页面。Auto System Agent 在独立仓库中提供 Vue Web、Go Agent API 与 TypeScript Claude Daemon。两套系统通过工作台桥接契约交换快照、保存确认和 Patch 审阅结果。</p>
+        <div class="callout">浏览器只访问 Web 同源 API。Web BFF 做请求边界与转发；Go API 负责权威状态；Daemon 负责启动本机 Claude Agent SDK。浏览器不直接连接 Daemon。</div>
+      </section>
+
+      <section class="section-card" id="components">
+        <p class="eyebrow">02 · 组件边界</p>
+        <h2>职责分开，状态有唯一归属</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>组件</th><th>负责什么</th><th>明确不负责什么</th></tr></thead>
+          <tbody>
+            <tr><td>Vue Web</td><td>Editor 桥接、聊天与 Session 选择、SSE 展示、FollowUp 队列、人工工具确认。</td><td>不拥有权威 revision / Session ID；不直接调用 Daemon。</td></tr>
+            <tr><td>Web BFF</td><td>提供同源 <code>/api</code>，执行 Origin、方法、路由与 CSRF 检查并流式转发。</td><td>不持久化 Workspace、Session 或 Run。</td></tr>
+            <tr><td>Go Agent API</td><td>维护 Workspace、不可变 Revision、Session 绑定、Run 历史、FollowUp 与工具决定；向 Agent 根目录物化快照。</td><td>不启动 Claude CLI，也不保存完整对话上下文。</td></tr>
+            <tr><td>Claude Daemon</td><td>校验本地允许路径、限制并发、启动 / 取消 SDK Run、暴露 Runtime 工具并转发事件。</td><td>不充当长期 Session Store；活动进程和事件缓冲在重启后丢失。</td></tr>
+            <tr><td>Claude Agent SDK</td><td>通过一次 <code>query()</code> 执行模型交互；给定 Session ID 时续接对话。</td><td>不拥有 Editor revision；草稿文件不会自动成为 Editor 修改。</td></tr>
+            <tr><td>现有 Editor</td><td>提供页面权威快照；审阅 Agent Patch；保存批准后的页面内容。</td><td>不管理 Agent Session、Daemon 生命周期或 Go 运行队列。</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section class="section-card" id="entities">
+        <p class="eyebrow">03 · 对象模型</p>
+        <h2>Workspace、Session、Run 与 Runtime 不是同一个东西</h2>
+        <p>一个 Editor 页面对应一个稳定 Workspace。多个 Agent Session 可以围绕同一个 Workspace 继续或切换聊天，但当前 Editor 内容只有一个 revision HEAD。</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>对象</th><th>语义</th><th>当前保存位置</th></tr></thead>
+          <tbody>
+            <tr><td>Workspace</td><td>一个 Editor 页面在 Agent 工作台中的稳定身份。</td><td>Go 本地 Store；一个当前 HEAD。</td></tr>
+            <tr><td>Revision</td><td>Editor 某一时刻的完整不可变快照；更新时按 baseRevision 做比较并交换。</td><td>Go 本地快照 Store。</td></tr>
+            <tr><td>Agent Session</td><td>可续接的一段 Claude 对话；同一 Session 可以跨多个 Run。</td><td>Session ID 绑定由 Go 保存；Claude 上下文文件位于独立 session-state。</td></tr>
+            <tr><td>Run</td><td>一次具体的模型执行，不等同于 Session 或 Daemon 进程。</td><td>Go 保存提示、输出、终态与工具交互；Daemon 活动态只在内存。</td></tr>
+            <tr><td>FollowUp</td><td>Run 活动期间用户排队的下一条文本 / 图片消息。</td><td>Go 持久化消息与送达决定，终态后按顺序派发。</td></tr>
+            <tr><td>Runtime Tool Request</td><td>Agent 暂停并等待 Editor / 用户确认的工具请求。</td><td>Go 持久化待处理决定，Web 刷新后可恢复展示。</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section class="section-card" id="run-flow">
+        <p class="eyebrow">04 · 执行路径</p>
+        <h2>一次 Run 如何从浏览器走到模型服务</h2>
+        <ol class="steps">
+          <li><div><strong>Editor 建立工作区上下文</strong><span>开发模式下，Editor 通过受信任的 MessagePort 向 Web 传递 workspace 标识与当前快照。</span></div></li>
+          <li><div><strong>Web 经 BFF 发起 Run</strong><span>请求带上当前 Workspace、baseRevision、选中的 Session 或新建 Session 意图和用户输入。</span></div></li>
+          <li><div><strong>Go 校验并准备稳定 Agent 根目录</strong><span>API 校验 revision，将 Editor 文件以只读快照物化到 <code>workspace/current/</code>，准备本次 Run 输入。</span></div></li>
+          <li><div><strong>Daemon 启动 Claude SDK query</strong><span>Go 将 Run 与 Session ID 交给 Daemon；Daemon 启动隔离的 Claude Runtime，必要时用 Session ID 续接上下文。</span></div></li>
+          <li><div><strong>SSE 回传过程与终态</strong><span>Daemon → Go → BFF → Web 转发状态、文本增量、工具请求和最终结果。Web 不轮询 Run。</span></div></li>
+          <li><div><strong>服务端同时记录运行状态</strong><span>Go 独立订阅事件并持久化 Run 状态、Session 绑定与消息决定；关闭浏览器不会阻止这条记录路径。</span></div></li>
+        </ol>
+        <div class="callout green">SSE 断线后可携带 <code>Last-Event-ID</code> 重连。Daemon 的事件重放仅存在于当前进程；Daemon 重启不等于原 Run 继续执行。</div>
+      </section>
+
+      <section class="section-card" id="workspace">
+        <p class="eyebrow">05 · Editor 数据与补丁</p>
+        <h2>快照更新不改变 Agent 的工作目录</h2>
+        <p>Go 为每个 Workspace 保持稳定的 Agent 根目录。每份 Editor 快照生成不可变 Revision，再原子更新 <code>workspace/current/</code>。<code>CURRENT_WORKSPACE.md</code> 描述当前版本与变化路径；<code>Notes.md</code>、<code>Memory/</code> 等记忆文件留在快照目录之外。因此更新快照不会替换 Runtime 的 cwd。</p>
+        <div class="split">
+          <div><h3>Editor → Agent</h3><p>人工保存立即创建 Revision，但不自动触发模型请求。下一次真实用户 Run 才将所选 Session 上次基线到当前 HEAD 的合并差异提供给 Agent。</p></div>
+          <div><h3>Agent → Editor</h3><p>Agent 通过 <code>deliver_patch</code> 提交限定范围的 JSON Patch。Editor 审阅、应用并保存；Go 确认新 Revision 后，工具结果才返回 Runtime。</p></div>
+        </div>
+        <div class="callout amber">Agent 在 Bash 草稿目录中的其他文件改动不会自动发布到 Editor。只有经 Editor 明确确认并保存的 Patch 才会成为新快照。</div>
+      </section>
+
+      <section class="section-card" id="recovery">
+        <p class="eyebrow">06 · 会话与恢复</p>
+        <h2>刷新可以恢复 Session，不代表恢复被杀掉的 Runtime</h2>
+        <p>Web 刷新后向 Go 恢复 Session 列表、选中的 Session 消息、Workspace 的 Run 历史与未完成工具请求，并为活动 Run 恢复 SSE 订阅。Session 正文以 Claude 本地记录为依据；Run 历史描述一次执行与其工具交互，二者互补。</p>
+        <p>待处理的 Patch 或 <code>ask_user</code> 决定由 Go 留存，页面刷新后可以重新展示，不要求 Agent 重复调用工具。Daemon 重启会中止活动 Runtime 与其内存事件缓冲；保存的 Session ID 和 Claude 本地 Session 文件可供新的 Run 续接，但不会重建旧 Run 的现场。</p>
+      </section>
+
+      <section class="section-card" id="security">
+        <p class="eyebrow">07 · 安全与扩展</p>
+        <h2>本地开发边界，不是多人生产认证</h2>
+        <div class="grid-3">
+          <div class="mini-card"><h3>本机信任边界</h3><p>Go API 与 Daemon 绑定回环地址；Web BFF 限制来源、方法和路由。开发模式不是服务端身份认证。</p></div>
+          <div class="mini-card"><h3>文件与命令边界</h3><p>Daemon 校验允许路径，SDK 的 Bash 在操作系统沙箱内运行；快照只读，SDK Write / Edit 不开放。</p></div>
+          <div class="mini-card"><h3>并发边界</h3><p>Go 文件 Store 的锁只覆盖单进程；Daemon 按 Workspace 串行执行并限制活动与排队数量。</p></div>
+        </div>
+        <h3>部署到多人或 Pod 前仍需补齐</h3>
+        <p>共享持久化 Store、跨副本幂等与任务调度、租户隔离、身份认证、队列与配额、凭据和沙箱网络隔离都尚未由当前本地实现提供。后续可在 Runtime 边界评估内部 SKILL、CLI MCP、SSE MCP 与外部 Skill，但必须逐项授权工具能力和访问范围；不会默认继承本机全部配置。</p>
+      </section>
+
+      <section class="section-card" id="multica">
+        <p class="eyebrow">08 · 设计参考</p>
+        <h2>借鉴 Multica 的对象分层，不复制其云端协作模型</h2>
+        <p>Multica 文档把工作区、任务、Agent、Runtime 与单次 Run 分开描述：平台侧管理协作记录与状态，连接的执行环境调用本地工具。Auto System Agent 借鉴这种“协调层与执行层分离”及对象边界，用于单个 Editor 工作区。</p>
+        <p>两者业务对象并不完全对应。本项目当前没有 Multica 的团队任务、成员权限、小队或云端调度；Go API 也不是多人协调服务。未来把 Daemon 放入服务器 Pod，还需要重新明确 Revision、Session 与执行状态的持久化和调度边界。</p>
+      </section>
+
+      <section class="section-card" id="references">
+        <p class="eyebrow">09 · 延伸阅读</p>
+        <h2>参考文档与代码入口</h2>
+        <h3>Multica 概念参考</h3>
+        <ul class="refs">
+          <li><a href="https://multica.ai/docs/zh/how-multica-works" target="_blank" rel="noreferrer">Multica 的工作方式</a><small>协调层与连接设备执行职责的区分。</small></li>
+          <li><a href="https://multica.ai/docs/zh/concepts" target="_blank" rel="noreferrer">Multica 核心概念</a><small>Workspace、Agent、Runtime 与 Run 的对象区分。</small></li>
+          <li><a href="https://multica.ai/docs/zh/tasks" target="_blank" rel="noreferrer">Multica 任务与运行</a><small>持续工作对象与单次执行记录的区别。</small></li>
+          <li><a href="https://multica.ai/docs/zh/daemon-runtimes" target="_blank" rel="noreferrer">Multica Daemon 与 Runtime</a><small>本地 Daemon 和工具执行环境的数据边界。</small></li>
+        </ul>
+        <h3>本项目实现说明</h3>
+        <ul class="refs">
+          <li><code>packages/web/README.md</code><small>Editor 桥接、BFF、聊天与 SSE。</small></li>
+          <li><code>packages/go-api/README.md</code><small>Workspace、Revision、Session、Run、FollowUp 持久化。</small></li>
+          <li><code>packages/go-api/daemon-protocol.md</code><small>请求字段、事件、工具结果与 Patch 审核契约。</small></li>
+          <li><code>packages/claude-daemon/README.md</code><small>SDK 调用、沙箱、Session 续接与 Runtime 工具。</small></li>
+        </ul>
+        <div class="callout">本页面是对当前代码与包级说明的架构导读。实现细节会变化；部署、安全与恢复能力以代码和包级文档的最新状态为准。</div>
+      </section>
+      <p class="footer">Auto System Agent · 架构文档 · 中文</p>
+    </main>
+
+    <aside class="toc" aria-label="本页目录">
+      <p class="toc-label">本页内容</p>
+      <nav>
+        <a href="#positioning">设计定位</a>
+        <a href="#components">组件边界</a>
+        <a href="#entities">对象模型</a>
+        <a href="#run-flow">运行流程</a>
+        <a href="#workspace">快照与 Patch</a>
+        <a href="#recovery">恢复边界</a>
+        <a href="#security">安全与扩展</a>
+        <a href="#multica">Multica 参考</a>
+        <a href="#references">参考资料</a>
+      </nav>
+    </aside>
+  </div>
+  <script>
+    const sections = [...document.querySelectorAll('main section[id]')];
+    const links = [...document.querySelectorAll('.nav a, .toc a')];
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      links.forEach(link => link.classList.toggle('active', link.hash === `#${visible.target.id}`));
+    }, { rootMargin: '-12% 0px -72% 0px', threshold: [0, .2, .5] });
+    sections.forEach(section => observer.observe(section));
+  </script>
+</body>
+</html>
