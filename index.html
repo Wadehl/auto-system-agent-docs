@@ -1,267 +1,76 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Auto System Agent 的组件边界、运行流程、数据归属与部署限制。">
-  <title>系统架构 · Auto System Agent</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --canvas: #f7f8fa;
-      --surface: #fff;
-      --ink: #202735;
-      --muted: #697386;
-      --subtle: #8993a4;
-      --line: #e7eaf0;
-      --blue: #4263eb;
-      --blue-wash: #edf2ff;
-      --green: #24855b;
-      --green-wash: #edf8f2;
-      --amber: #9b6614;
-      --amber-wash: #fff7e8;
-      --shadow: 0 8px 28px rgba(28, 39, 60, .045);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      font-synthesis: none;
-      text-rendering: optimizeLegibility;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 28px; }
-    body { margin: 0; background: var(--canvas); color: var(--ink); font-size: 15px; line-height: 1.75; }
-    a { color: var(--blue); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    code { padding: .13em .4em; border: 1px solid #e8ebf1; border-radius: 5px; background: #f4f6f9; color: #46516a; font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
-    .layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 204px; gap: 32px; width: min(1440px, 100%); min-height: 100vh; margin: 0 auto; padding: 32px 36px 72px; }
-    .sidebar, .toc { position: sticky; top: 28px; align-self: start; max-height: calc(100vh - 56px); overflow: auto; }
-    .brand { display: flex; gap: 11px; align-items: center; margin: 2px 0 30px; font-size: 14px; font-weight: 700; letter-spacing: -.02em; }
-    .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--blue); color: white; font-size: 14px; }
-    .side-label, .toc-label { margin: 0 0 10px 11px; color: var(--subtle); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
-    .nav { display: grid; gap: 3px; }
-    .nav a { padding: 7px 11px; border-radius: 7px; color: #596477; font-size: 13px; }
-    .nav a:hover { background: #eef1f6; text-decoration: none; }
-    .nav a.active { background: var(--blue-wash); color: #3556ce; font-weight: 600; }
-    .side-foot { margin: 28px 4px 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.6; }
-    main { min-width: 0; }
-    .breadcrumb { margin: 0 0 12px; color: var(--subtle); font-size: 12px; }
-    h1 { margin: 0; font-size: clamp(30px, 4vw, 42px); line-height: 1.2; letter-spacing: -.045em; }
-    .lead { max-width: 760px; margin: 16px 0 25px; color: #5f6b7e; font-size: 17px; line-height: 1.75; }
-    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 27px; }
-    .pill { padding: 4px 9px; border: 1px solid var(--line); border-radius: 99px; background: white; color: #667185; font-size: 11px; }
-    .hero-card, .section-card { margin: 0 0 20px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); box-shadow: var(--shadow); }
-    .hero-card { overflow: hidden; }
-    .card-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 19px 22px 14px; }
-    .card-head h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
-    .card-head span { color: var(--subtle); font-size: 12px; }
-    .diagram-frame { display: block; width: 100%; height: min(78vh, 850px); min-height: 600px; border: 0; border-top: 1px solid var(--line); background: #fbfcfe; }
-    .section-card { padding: 24px 26px; scroll-margin-top: 24px; }
-    .eyebrow { margin: 0 0 4px; color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-    h2 { margin: 0 0 13px; font-size: 22px; line-height: 1.35; letter-spacing: -.03em; }
-    h3 { margin: 23px 0 8px; font-size: 16px; letter-spacing: -.015em; }
-    p { margin: 8px 0 12px; color: #4e596b; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 17px; }
-    .mini-card { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fcfcfd; }
-    .mini-card h3 { margin: 0 0 7px; font-size: 14px; }
-    .mini-card p { margin: 0; color: var(--muted); font-size: 13px; }
-    .callout { margin: 16px 0 4px; padding: 14px 16px; border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; background: var(--blue-wash); color: #3c4d83; font-size: 13px; }
-    .callout.green { border-color: var(--green); background: var(--green-wash); color: #386b53; }
-    .callout.amber { border-color: #d49a38; background: var(--amber-wash); color: #795a28; }
-    .table-wrap { overflow-x: auto; margin-top: 16px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    th { background: #f8f9fb; color: #697386; font-size: 11px; font-weight: 700; }
-    td { color: #4e596b; }
-    td:first-child { min-width: 132px; color: #2d3748; font-weight: 600; }
-    .steps { display: grid; gap: 0; margin: 18px 0 0; padding: 0; list-style: none; counter-reset: steps; }
-    .steps li { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 0 0 19px; counter-increment: steps; }
-    .steps li::before { content: counter(steps); display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #dce3f2; border-radius: 50%; background: #f2f5ff; color: var(--blue); font-size: 12px; font-weight: 700; }
-    .steps li:not(:last-child)::after { position: absolute; top: 29px; bottom: 0; left: 13px; width: 1px; background: var(--line); content: ""; }
-    .steps strong { display: block; margin: 1px 0 2px; font-size: 14px; }
-    .steps span { color: var(--muted); font-size: 13px; }
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 15px; }
-    .split > div { padding: 15px 16px; border: 1px solid var(--line); border-radius: 10px; }
-    .split h3 { margin: 0 0 6px; }
-    .split p { margin: 0; font-size: 13px; }
-    .toc { padding-top: 57px; }
-    .toc nav { display: grid; gap: 5px; border-left: 1px solid #dfe3ea; }
-    .toc a { margin-left: -1px; padding: 4px 0 4px 13px; border-left: 1px solid transparent; color: #778195; font-size: 12px; line-height: 1.45; }
-    .toc a:hover, .toc a.active { border-color: var(--blue); color: #3e5ed0; text-decoration: none; }
-    .refs { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
-    .refs li { padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: #fcfcfd; font-size: 13px; }
-    .refs small { display: block; margin-top: 2px; color: var(--muted); }
-    .footer { padding: 8px 4px; color: var(--subtle); font-size: 12px; }
-    @media (max-width: 1120px) { .layout { grid-template-columns: 205px minmax(0, 1fr); gap: 24px; padding-inline: 24px; } .toc { display: none; } }
-    @media (max-width: 720px) { .layout { display: block; padding: 18px 14px 46px; } .sidebar { position: static; max-height: none; margin-bottom: 24px; } .brand { margin-bottom: 13px; } .side-label, .side-foot { display: none; } .nav { display: flex; overflow-x: auto; padding-bottom: 5px; } .nav a { flex: 0 0 auto; } .lead { font-size: 15px; } .diagram-frame { min-height: 520px; height: 68vh; } .section-card { padding: 19px 17px; } .grid-3, .split { grid-template-columns: 1fr; } }
-    @media print { .layout { display: block; width: auto; padding: 0; } .sidebar, .toc { display: none; } .hero-card, .section-card { box-shadow: none; break-inside: avoid; } .diagram-frame { height: 760px; } a { color: inherit; } }
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Auto System Agent 文档：快速上手、核心概念、工作区、Agent、Skills、MCP 与运行时。">
+<title>Auto System Agent 文档</title>
+<style>
+:root{color-scheme:light;--ink:#202124;--muted:#5f6368;--soft:#80868b;--line:#e8eaed;--sidebar:#fbfbfc;--hover:#f1f3f4;--active:#e8f0fe;--blue:#1a73e8;--code:#f6f8fa;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);font-size:14px;line-height:1.72}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.top{height:58px;position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:650}.mark{display:grid;width:27px;height:27px;place-items:center;border-radius:8px;background:var(--blue);color:#fff;font-weight:700}.separator{height:19px;border-left:1px solid var(--line)}.top-label{color:var(--muted);font-size:13px}.map-link{margin-left:auto;font-size:12px;color:var(--muted)}.menu{display:none;margin-left:auto;border:0;background:none;font-size:20px}
+.shell{display:grid;grid-template-columns:245px minmax(0,1fr) 180px;max-width:1500px;margin:auto}.sidebar{position:sticky;top:58px;align-self:start;height:calc(100vh - 58px);overflow:auto;padding:24px 14px 28px 22px;border-right:1px solid var(--line);background:var(--sidebar)}.group{margin:0 0 22px}.group h2{margin:0 0 7px;padding:0 9px;font-size:12px;font-weight:650}.nav{display:grid;gap:2px}.nav a{padding:6px 9px;border-radius:6px;color:var(--muted);font-size:13px;line-height:1.45}.nav a:hover{background:var(--hover);text-decoration:none}.nav a.active{background:var(--active);color:#174ea6;font-weight:600}.side-note{margin:25px 8px 0;padding-top:14px;border-top:1px solid var(--line);color:var(--soft);font-size:11px}
+main{min-width:0;padding:42px clamp(24px,5vw,72px) 70px}.article{display:none;max-width:780px;margin:auto}.article.active{display:block}.crumb{margin:0 0 12px;color:var(--soft);font-size:12px}.crumb span{padding:0 7px;color:#bdc1c6}.eyebrow{margin:0 0 6px;color:var(--blue);font-size:11px;font-weight:700;letter-spacing:.06em}h1{margin:0;font-size:34px;line-height:1.25;letter-spacing:-.035em;font-weight:650}.lead{margin:13px 0 28px;color:var(--muted);font-size:16px;line-height:1.75}.article h2{margin:33px 0 10px;padding-top:4px;font-size:21px;line-height:1.4;letter-spacing:-.02em}.article h3{margin:22px 0 6px;font-size:15px}.article p{margin:8px 0 12px;color:#3c4043}.article ul,.article ol{padding-left:23px;color:#3c4043}.article li{margin:6px 0}.article code{padding:.15em .4em;border-radius:4px;background:var(--code);color:#303846;font: .88em ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.article pre{overflow:auto;margin:14px 0;padding:15px 17px;border:1px solid var(--line);border-radius:8px;background:#f8f9fa;color:#303846;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}.callout{margin:18px 0;padding:12px 15px;border-left:3px solid var(--blue);border-radius:0 6px 6px 0;background:#f5f8ff}.callout p{margin:0}.callout.warn{border-color:#f9ab00;background:#fff8e1}.callout.ok{border-color:#34a853;background:#f1f8f3}.steps{list-style:none;padding:0!important;counter-reset:n}.steps li{position:relative;margin:0!important;padding:0 0 15px 39px;counter-increment:n}.steps li:before{position:absolute;left:0;top:1px;display:grid;width:25px;height:25px;place-items:center;border:1px solid #dadce0;border-radius:50%;content:counter(n);font-size:12px}.steps li:not(:last-child):after{position:absolute;top:27px;bottom:0;left:12px;border-left:1px solid var(--line);content:""}.steps strong{display:block}.steps span{display:block;color:var(--muted)}.table-wrap{overflow:auto;margin:14px 0}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--muted);font-size:11px}td:first-child{min-width:115px;font-weight:600}.next{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}.next p{color:var(--soft);font-size:11px}.next-links{display:flex;flex-wrap:wrap;gap:8px}.next-links a{padding:7px 10px;border:1px solid var(--line);border-radius:7px;color:#3c4043;font-size:12px}.toc{position:sticky;top:82px;align-self:start;padding:34px 15px 20px 0}.toc strong{display:block;margin-bottom:9px;color:var(--muted);font-size:11px}.toc nav{display:grid;border-left:1px solid var(--line)}.toc a{padding:3px 0 3px 10px;border-left:1px solid transparent;margin-left:-1px;color:var(--soft);font-size:11px}.toc a:hover{border-color:var(--blue);text-decoration:none;color:#174ea6}
+@media(max-width:1000px){.shell{grid-template-columns:225px minmax(0,1fr)}.toc{display:none}main{padding-inline:clamp(22px,5vw,60px)}}@media(max-width:650px){.top{height:52px;padding:0 14px}.separator,.top-label{display:none}.menu{display:block}.shell{display:block}.sidebar{position:relative;top:auto;height:auto;max-height:190px;padding:12px;border-right:0;border-bottom:1px solid var(--line)}.group{margin-bottom:10px}.nav{display:flex;overflow-x:auto}.nav a{flex:0 0 auto}.side-note{display:none}main{padding:27px 18px 50px}h1{font-size:29px}.lead{font-size:15px}}@media print{.top,.sidebar,.toc{display:none}.shell{display:block}.article{display:block!important;break-after:page}main{padding:0 20px}}
+</style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" aria-label="文档导航">
-      <div class="brand"><span class="brand-mark">A</span><span>Auto System Agent</span></div>
-      <p class="side-label">项目文档</p>
-      <nav class="nav">
-        <a class="active" href="#overview">架构总览</a>
-        <a href="#positioning">设计定位</a>
-        <a href="#components">组件职责</a>
-        <a href="#entities">核心对象</a>
-        <a href="#run-flow">一次运行如何发生</a>
-        <a href="#workspace">快照与 Patch</a>
-        <a href="#recovery">会话与恢复</a>
-        <a href="#security">安全与扩展边界</a>
-        <a href="#multica">与 Multica 的关系</a>
-        <a href="#references">参考与代码入口</a>
-      </nav>
-      <div class="side-foot">这份说明描述当前本地单用户实现。尚未实现的云端部署能力会明确标出，不应视为现成功能。</div>
-    </aside>
-
-    <main>
-      <p class="breadcrumb">文档 <span aria-hidden="true">/</span> 架构</p>
-      <h1>系统架构</h1>
-      <p class="lead">Auto System Agent 为现有自动化 Editor 提供独立的 Agent 工作台。它把对话与协调留在 Web / Go API，把 Claude Runtime 放在本机 Daemon 中运行；Editor 仍是页面内容与最终保存状态的权威来源。</p>
-      <div class="meta-row"><span class="pill">架构说明</span><span class="pill">当前实现：本地单用户</span><span class="pill">组件图可交互</span><span class="pill">更新：2026-09-29</span></div>
-
-      <section class="hero-card" id="overview" aria-labelledby="diagram-title">
-        <div class="card-head"><h2 id="diagram-title">组件关系与数据边界</h2><span>可缩放、聚焦和切换视图</span></div>
-        <iframe class="diagram-frame" title="Auto System Agent 交互式架构图" src="./auto-system-agent-architecture-map.html" loading="lazy"></iframe>
-      </section>
-
-      <section class="section-card" id="positioning">
-        <p class="eyebrow">01 · 定位</p>
-        <h2>为 Editor 增加 Agent 工作台，不改造原自动化后端</h2>
-        <p>Editor 仍由现有自动化平台启动、编辑和保存页面。Auto System Agent 在独立仓库中提供 Vue Web、Go Agent API 与 TypeScript Claude Daemon。两套系统通过工作台桥接契约交换快照、保存确认和 Patch 审阅结果。</p>
-        <div class="callout">浏览器只访问 Web 同源 API。Web BFF 做请求边界与转发；Go API 负责权威状态；Daemon 负责启动本机 Claude Agent SDK。浏览器不直接连接 Daemon。</div>
-      </section>
-
-      <section class="section-card" id="components">
-        <p class="eyebrow">02 · 组件边界</p>
-        <h2>职责分开，状态有唯一归属</h2>
-        <div class="table-wrap"><table>
-          <thead><tr><th>组件</th><th>负责什么</th><th>明确不负责什么</th></tr></thead>
-          <tbody>
-            <tr><td>Vue Web</td><td>Editor 桥接、聊天与 Session 选择、SSE 展示、FollowUp 队列、人工工具确认。</td><td>不拥有权威 revision / Session ID；不直接调用 Daemon。</td></tr>
-            <tr><td>Web BFF</td><td>提供同源 <code>/api</code>，执行 Origin、方法、路由与 CSRF 检查并流式转发。</td><td>不持久化 Workspace、Session 或 Run。</td></tr>
-            <tr><td>Go Agent API</td><td>维护 Workspace、不可变 Revision、Session 绑定、Run 历史、FollowUp 与工具决定；向 Agent 根目录物化快照。</td><td>不启动 Claude CLI，也不保存完整对话上下文。</td></tr>
-            <tr><td>Claude Daemon</td><td>校验本地允许路径、限制并发、启动 / 取消 SDK Run、暴露 Runtime 工具并转发事件。</td><td>不充当长期 Session Store；活动进程和事件缓冲在重启后丢失。</td></tr>
-            <tr><td>Claude Agent SDK</td><td>通过一次 <code>query()</code> 执行模型交互；给定 Session ID 时续接对话。</td><td>不拥有 Editor revision；草稿文件不会自动成为 Editor 修改。</td></tr>
-            <tr><td>现有 Editor</td><td>提供页面权威快照；审阅 Agent Patch；保存批准后的页面内容。</td><td>不管理 Agent Session、Daemon 生命周期或 Go 运行队列。</td></tr>
-          </tbody>
-        </table></div>
-      </section>
-
-      <section class="section-card" id="entities">
-        <p class="eyebrow">03 · 对象模型</p>
-        <h2>Workspace、Session、Run 与 Runtime 不是同一个东西</h2>
-        <p>一个 Editor 页面对应一个稳定 Workspace。多个 Agent Session 可以围绕同一个 Workspace 继续或切换聊天，但当前 Editor 内容只有一个 revision HEAD。</p>
-        <div class="table-wrap"><table>
-          <thead><tr><th>对象</th><th>语义</th><th>当前保存位置</th></tr></thead>
-          <tbody>
-            <tr><td>Workspace</td><td>一个 Editor 页面在 Agent 工作台中的稳定身份。</td><td>Go 本地 Store；一个当前 HEAD。</td></tr>
-            <tr><td>Revision</td><td>Editor 某一时刻的完整不可变快照；更新时按 baseRevision 做比较并交换。</td><td>Go 本地快照 Store。</td></tr>
-            <tr><td>Agent Session</td><td>可续接的一段 Claude 对话；同一 Session 可以跨多个 Run。</td><td>Session ID 绑定由 Go 保存；Claude 上下文文件位于独立 session-state。</td></tr>
-            <tr><td>Run</td><td>一次具体的模型执行，不等同于 Session 或 Daemon 进程。</td><td>Go 保存提示、输出、终态与工具交互；Daemon 活动态只在内存。</td></tr>
-            <tr><td>FollowUp</td><td>Run 活动期间用户排队的下一条文本 / 图片消息。</td><td>Go 持久化消息与送达决定，终态后按顺序派发。</td></tr>
-            <tr><td>Runtime Tool Request</td><td>Agent 暂停并等待 Editor / 用户确认的工具请求。</td><td>Go 持久化待处理决定，Web 刷新后可恢复展示。</td></tr>
-          </tbody>
-        </table></div>
-      </section>
-
-      <section class="section-card" id="run-flow">
-        <p class="eyebrow">04 · 执行路径</p>
-        <h2>一次 Run 如何从浏览器走到模型服务</h2>
-        <ol class="steps">
-          <li><div><strong>Editor 建立工作区上下文</strong><span>开发模式下，Editor 通过受信任的 MessagePort 向 Web 传递 workspace 标识与当前快照。</span></div></li>
-          <li><div><strong>Web 经 BFF 发起 Run</strong><span>请求带上当前 Workspace、baseRevision、选中的 Session 或新建 Session 意图和用户输入。</span></div></li>
-          <li><div><strong>Go 校验并准备稳定 Agent 根目录</strong><span>API 校验 revision，将 Editor 文件以只读快照物化到 <code>workspace/current/</code>，准备本次 Run 输入。</span></div></li>
-          <li><div><strong>Daemon 启动 Claude SDK query</strong><span>Go 将 Run 与 Session ID 交给 Daemon；Daemon 启动隔离的 Claude Runtime，必要时用 Session ID 续接上下文。</span></div></li>
-          <li><div><strong>SSE 回传过程与终态</strong><span>Daemon → Go → BFF → Web 转发状态、文本增量、工具请求和最终结果。Web 不轮询 Run。</span></div></li>
-          <li><div><strong>服务端同时记录运行状态</strong><span>Go 独立订阅事件并持久化 Run 状态、Session 绑定与消息决定；关闭浏览器不会阻止这条记录路径。</span></div></li>
-        </ol>
-        <div class="callout green">SSE 断线后可携带 <code>Last-Event-ID</code> 重连。Daemon 的事件重放仅存在于当前进程；Daemon 重启不等于原 Run 继续执行。</div>
-      </section>
-
-      <section class="section-card" id="workspace">
-        <p class="eyebrow">05 · Editor 数据与补丁</p>
-        <h2>快照更新不改变 Agent 的工作目录</h2>
-        <p>Go 为每个 Workspace 保持稳定的 Agent 根目录。每份 Editor 快照生成不可变 Revision，再原子更新 <code>workspace/current/</code>。<code>CURRENT_WORKSPACE.md</code> 描述当前版本与变化路径；<code>Notes.md</code>、<code>Memory/</code> 等记忆文件留在快照目录之外。因此更新快照不会替换 Runtime 的 cwd。</p>
-        <div class="split">
-          <div><h3>Editor → Agent</h3><p>人工保存立即创建 Revision，但不自动触发模型请求。下一次真实用户 Run 才将所选 Session 上次基线到当前 HEAD 的合并差异提供给 Agent。</p></div>
-          <div><h3>Agent → Editor</h3><p>Agent 通过 <code>deliver_patch</code> 提交限定范围的 JSON Patch。Editor 审阅、应用并保存；Go 确认新 Revision 后，工具结果才返回 Runtime。</p></div>
-        </div>
-        <div class="callout amber">Agent 在 Bash 草稿目录中的其他文件改动不会自动发布到 Editor。只有经 Editor 明确确认并保存的 Patch 才会成为新快照。</div>
-      </section>
-
-      <section class="section-card" id="recovery">
-        <p class="eyebrow">06 · 会话与恢复</p>
-        <h2>刷新可以恢复 Session，不代表恢复被杀掉的 Runtime</h2>
-        <p>Web 刷新后向 Go 恢复 Session 列表、选中的 Session 消息、Workspace 的 Run 历史与未完成工具请求，并为活动 Run 恢复 SSE 订阅。Session 正文以 Claude 本地记录为依据；Run 历史描述一次执行与其工具交互，二者互补。</p>
-        <p>待处理的 Patch 或 <code>ask_user</code> 决定由 Go 留存，页面刷新后可以重新展示，不要求 Agent 重复调用工具。Daemon 重启会中止活动 Runtime 与其内存事件缓冲；保存的 Session ID 和 Claude 本地 Session 文件可供新的 Run 续接，但不会重建旧 Run 的现场。</p>
-      </section>
-
-      <section class="section-card" id="security">
-        <p class="eyebrow">07 · 安全与扩展</p>
-        <h2>本地开发边界，不是多人生产认证</h2>
-        <div class="grid-3">
-          <div class="mini-card"><h3>本机信任边界</h3><p>Go API 与 Daemon 绑定回环地址；Web BFF 限制来源、方法和路由。开发模式不是服务端身份认证。</p></div>
-          <div class="mini-card"><h3>文件与命令边界</h3><p>Daemon 校验允许路径，SDK 的 Bash 在操作系统沙箱内运行；快照只读，SDK Write / Edit 不开放。</p></div>
-          <div class="mini-card"><h3>并发边界</h3><p>Go 文件 Store 的锁只覆盖单进程；Daemon 按 Workspace 串行执行并限制活动与排队数量。</p></div>
-        </div>
-        <h3>部署到多人或 Pod 前仍需补齐</h3>
-        <p>共享持久化 Store、跨副本幂等与任务调度、租户隔离、身份认证、队列与配额、凭据和沙箱网络隔离都尚未由当前本地实现提供。后续可在 Runtime 边界评估内部 SKILL、CLI MCP、SSE MCP 与外部 Skill，但必须逐项授权工具能力和访问范围；不会默认继承本机全部配置。</p>
-      </section>
-
-      <section class="section-card" id="multica">
-        <p class="eyebrow">08 · 设计参考</p>
-        <h2>借鉴 Multica 的对象分层，不复制其云端协作模型</h2>
-        <p>Multica 文档把工作区、任务、Agent、Runtime 与单次 Run 分开描述：平台侧管理协作记录与状态，连接的执行环境调用本地工具。Auto System Agent 借鉴这种“协调层与执行层分离”及对象边界，用于单个 Editor 工作区。</p>
-        <p>两者业务对象并不完全对应。本项目当前没有 Multica 的团队任务、成员权限、小队或云端调度；Go API 也不是多人协调服务。未来把 Daemon 放入服务器 Pod，还需要重新明确 Revision、Session 与执行状态的持久化和调度边界。</p>
-      </section>
-
-      <section class="section-card" id="references">
-        <p class="eyebrow">09 · 延伸阅读</p>
-        <h2>参考文档与代码入口</h2>
-        <h3>Multica 概念参考</h3>
-        <ul class="refs">
-          <li><a href="https://multica.ai/docs/zh/how-multica-works" target="_blank" rel="noreferrer">Multica 的工作方式</a><small>协调层与连接设备执行职责的区分。</small></li>
-          <li><a href="https://multica.ai/docs/zh/concepts" target="_blank" rel="noreferrer">Multica 核心概念</a><small>Workspace、Agent、Runtime 与 Run 的对象区分。</small></li>
-          <li><a href="https://multica.ai/docs/zh/tasks" target="_blank" rel="noreferrer">Multica 任务与运行</a><small>持续工作对象与单次执行记录的区别。</small></li>
-          <li><a href="https://multica.ai/docs/zh/daemon-runtimes" target="_blank" rel="noreferrer">Multica Daemon 与 Runtime</a><small>本地 Daemon 和工具执行环境的数据边界。</small></li>
-        </ul>
-        <h3>本项目实现说明</h3>
-        <ul class="refs">
-          <li><code>packages/web/README.md</code><small>Editor 桥接、BFF、聊天与 SSE。</small></li>
-          <li><code>packages/go-api/README.md</code><small>Workspace、Revision、Session、Run、FollowUp 持久化。</small></li>
-          <li><code>packages/go-api/daemon-protocol.md</code><small>请求字段、事件、工具结果与 Patch 审核契约。</small></li>
-          <li><code>packages/claude-daemon/README.md</code><small>SDK 调用、沙箱、Session 续接与 Runtime 工具。</small></li>
-        </ul>
-        <div class="callout">本页面是对当前代码与包级说明的架构导读。实现细节会变化；部署、安全与恢复能力以代码和包级文档的最新状态为准。</div>
-      </section>
-      <p class="footer">Auto System Agent · 架构文档 · 中文</p>
-    </main>
-
-    <aside class="toc" aria-label="本页目录">
-      <p class="toc-label">本页内容</p>
-      <nav>
-        <a href="#positioning">设计定位</a>
-        <a href="#components">组件边界</a>
-        <a href="#entities">对象模型</a>
-        <a href="#run-flow">运行流程</a>
-        <a href="#workspace">快照与 Patch</a>
-        <a href="#recovery">恢复边界</a>
-        <a href="#security">安全与扩展</a>
-        <a href="#multica">Multica 参考</a>
-        <a href="#references">参考资料</a>
-      </nav>
-    </aside>
-  </div>
-  <script>
-    const sections = [...document.querySelectorAll('main section[id]')];
-    const links = [...document.querySelectorAll('.nav a, .toc a')];
-    const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      links.forEach(link => link.classList.toggle('active', link.hash === `#${visible.target.id}`));
-    }, { rootMargin: '-12% 0px -72% 0px', threshold: [0, .2, .5] });
-    sections.forEach(section => observer.observe(section));
-  </script>
+<header class="top"><a class="brand" href="#quickstart"><span class="mark">A</span><span>Auto System Agent</span></a><span class="separator"></span><span class="top-label">文档</span><button class="menu" aria-label="切换导航" aria-expanded="false">☰</button><a class="map-link" href="./auto-system-agent-architecture-map.html">架构图 ↗</a></header>
+<div class="shell">
+<aside class="sidebar" aria-label="文档导航">
+<section class="group"><h2>开始使用</h2><nav class="nav"><a href="#quickstart" data-link="quickstart">快速上手</a><a href="#concepts" data-link="concepts">核心概念</a><a href="#how-it-works" data-link="how-it-works">工作方式</a></nav></section>
+<section class="group"><h2>工作区</h2><nav class="nav"><a href="#workspace" data-link="workspace">工作区</a><a href="#members" data-link="members">成员与权限</a></nav></section>
+<section class="group"><h2>智能体</h2><nav class="nav"><a href="#agent" data-link="agent">智能体</a><a href="#skills-mcp" data-link="skills-mcp">Skills / MCP</a></nav></section>
+<section class="group"><h2>运行时与执行</h2><nav class="nav"><a href="#run" data-link="run">运行</a><a href="#daemon-runtime" data-link="daemon-runtime">守护进程与运行时</a></nav></section>
+<p class="side-note">本文描述当前本地开发版。“后续方向”尚未实现。</p></aside>
+<main>
+<article class="article" id="page-quickstart" data-title="快速上手">
+<p class="crumb">文档<span>/</span>开始使用</p><p class="eyebrow">开始使用</p><h1>快速上手</h1><p class="lead">在本机启动 Agent 工作台并连接现有 Auto System Editor。Editor 仍可独立运行，Agent 介入仅在开发模式下开放。</p>
+<h2 id="prepare">准备环境</h2><p>需要 Bun、Go、Claude Code CLI，以及本地可运行的 Editor 工程。Web、Go API 和 TypeScript Daemon 位于同一个 monorepo。</p>
+<h2 id="start">安装与启动</h2><p>在 Agent 仓库根目录安装依赖并创建本地配置：</p><pre>make install
+cp config.local.mk.example config.local.mk</pre><p>编辑 config.local.mk，将 EDITOR_PATH 配置为 Editor 工程绝对路径。需要打开特定页面时，可将完整页面 URL 配到 EDITOR_PAGE_URL。该配置可能含登录凭据，只保存在本机，不要提交或分享。</p><pre>make start</pre><p>启动后访问 <code>http://dev.auto-system.ai-local.com:8080/</code>。已运行的 Editor 会被复用；否则开发栈会依据 EDITOR_PATH 启动它。</p>
+<h2 id="first-task">开始对话</h2><ol class="steps"><li><strong>进入 Editor 开发模式</strong><span>普通独立 Editor 的编辑和保存不依赖 Agent 工作台。</span></li><li><strong>等待 Workspace 同步</strong><span>Web 从 Editor 获取页面快照，Go API 建立或恢复对应工作区。</span></li><li><strong>发送任务</strong><span>选择已有 Session 继续，或新建会话。Agent 提交的 Patch 仍需在 Editor 中审阅并保存。</span></li></ol><div class="callout warn"><p>当前是本地单用户开发版。开发模式开关不是服务端身份认证，不要将 API 或 Daemon 暴露到公网。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#concepts">核心概念 →</a><a href="#how-it-works">工作方式 →</a></div></div></article>
+<article class="article" id="page-concepts" data-title="核心概念">
+<p class="crumb">文档<span>/</span>开始使用</p><p class="eyebrow">开始使用</p><h1>核心概念</h1><p class="lead">工作区、修订、会话、运行和运行时是不同对象，分别拥有不同的生命周期与恢复边界。</p>
+<h2 id="objects">核心对象</h2><div class="table-wrap"><table><thead><tr><th>对象</th><th>含义</th><th>主要归属</th></tr></thead><tbody><tr><td>Editor</td><td>自动化页面编辑与保存界面，是页面内容的权威来源。</td><td>自动化平台</td></tr><tr><td>Workspace</td><td>一个 Editor 页面在 Agent 系统中的稳定工作空间。</td><td>Go API</td></tr><tr><td>Revision</td><td>Workspace 当前保存的 Editor 快照版本；各 Session 共用。</td><td>Go API 保存，快照来自 Editor</td></tr><tr><td>Session</td><td>可持续的 Claude 对话上下文；一个 Workspace 可有多个。</td><td>Claude 本地记录，Go 保存最近绑定</td></tr><tr><td>Run</td><td>一次用户触发的 Agent 执行，可续接某个 Session。</td><td>Go 记录，Daemon 执行</td></tr><tr><td>Daemon</td><td>本机服务，启动、取消和监控 Agent Runtime。</td><td>TypeScript 服务</td></tr><tr><td>Runtime</td><td>一次实际的 Claude Agent SDK 执行，不等同于长期会话。</td><td>Daemon</td></tr></tbody></table></div>
+<h2 id="relations">对象关系</h2><p>一个 Editor 页面对应一个 Workspace；一个 Workspace 只有一个当前 Revision，但可拥有多个 Session。用户选择 Session 后发起 Run，Daemon 为 Run 启动 Runtime，Runtime 通过 Claude Agent SDK 创建或续接会话。</p><div class="callout ok"><p>记忆方法：Workspace 是容器，Revision 是当前快照，Session 是对话上下文，Run 是单次执行，Runtime 是执行进程。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#how-it-works">工作方式 →</a><a href="#workspace">工作区 →</a></div></div></article>
+<article class="article" id="page-how-it-works" data-title="工作方式">
+<p class="crumb">文档<span>/</span>开始使用</p><p class="eyebrow">开始使用</p><h1>工作方式</h1><p class="lead">Web 负责交互，Go API 负责工作区与运行记录，Daemon 负责本机执行。Editor 掌握页面的最终保存状态。</p>
+<h2 id="flow">一次运行的完整链路</h2><ol class="steps"><li><strong>Editor 提供快照</strong><span>开发模式下，Editor 将工作区标识和页面数据交给 Web。</span></li><li><strong>Web 请求 Go API</strong><span>请求携带 Workspace、Revision、Session 选择和用户消息。</span></li><li><strong>Go 准备工作目录</strong><span>保存 Revision，并将当前快照物化为只读文件。</span></li><li><strong>Daemon 启动 Claude Runtime</strong><span>Go 将 Run 与 Session ID 交给 Daemon，由 SDK 执行 Agent。</span></li><li><strong>SSE 返回过程和结果</strong><span>事件经 Daemon、Go API 和 Web 实时传递。</span></li><li><strong>Editor 确认 Patch</strong><span>用户审阅并保存后，Go 确认新 Revision，工具调用才成功返回。</span></li></ol>
+<h2 id="boundaries">数据与执行边界</h2><div class="table-wrap"><table><thead><tr><th>组件</th><th>负责</th><th>不负责</th></tr></thead><tbody><tr><td>Web</td><td>Editor 桥接、聊天、Session 选择、SSE 和人工审批。</td><td>不作为 Workspace / Revision 权威存储。</td></tr><tr><td>Go API</td><td>Workspace、Revision、Session 绑定、Run 和 FollowUp 记录。</td><td>不执行模型请求。</td></tr><tr><td>Daemon</td><td>Runtime 生命周期、事件转发和受限工具。</td><td>不长期保存 Run 与事件历史。</td></tr><tr><td>Editor</td><td>页面编辑、Patch 审阅、保存和最终页面状态。</td><td>不管理 Agent Session 或 Runtime 生命周期。</td></tr></tbody></table></div><div class="callout"><p>Go 运行记录与 Claude Session 上下文是两类数据。Daemon 重启会中断活动 Runtime，但已保存的 Session 可供新 Run 尝试续接。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#workspace">工作区 →</a><a href="#run">运行 →</a></div></div></article>
+<article class="article" id="page-workspace" data-title="工作区">
+<p class="crumb">文档<span>/</span>工作区</p><p class="eyebrow">工作区</p><h1>工作区</h1><p class="lead">Workspace 把一个 Editor 页面与 Agent 的稳定工作目录关联起来。Session 可以切换，当前 Editor Revision 只有一份。</p>
+<h2 id="editor-revisions">页面与修订</h2><p>一个 Editor 页面对应一个 Workspace。Editor 是页面数据来源；Go API 为已确认快照建立 Revision 并维护当前 HEAD。所有 Agent Session 共用这个 HEAD。</p><p>同步以 Editor 业务状态为准，并通过稳定哈希避免无意义的新 Revision。Editor 保存后，Go 更新工作区快照；多次保存可以在下一次真实运行时合并成当前差异，而不是每次保存都触发模型调用。</p>
+<h2 id="agent-files">Agent 文件空间</h2><p>Agent 根目录保持稳定。Editor 文件以只读快照形式位于 <code>workspace/current/</code>；CURRENT_WORKSPACE.md 描述当前版本和变更概况。Notes、Memory 与 Claude 运行状态在快照目录之外。</p><p>Agent 通过受限的 deliver_patch 将允许范围内的 JSON Patch 交给 Editor。草稿目录中的普通文件变化不会自动应用到页面。</p>
+<h2 id="source-of-truth">内容权威</h2><div class="callout ok"><p>Editor 保存后的页面状态是权威内容。Patch 只是提案；只有 Editor 应用并保存、Go 确认新 Revision 后，修改才算交付。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#members">成员与权限 →</a><a href="#agent">智能体 →</a></div></div></article>
+<article class="article" id="page-members" data-title="成员与权限">
+<p class="crumb">文档<span>/</span>工作区</p><p class="eyebrow">工作区</p><h1>成员与权限</h1><p class="lead">当前版本面向本机开发者，不包含团队成员、角色或多租户权限系统。</p>
+<h2 id="today">当前边界</h2><p>开发模式用于控制 Agent 工作台入口，不等同于用户身份认证或服务端授权。当前没有成员邀请、Workspace 角色、跨用户数据隔离或组织配额。</p><p>自动化平台的 JWT 服务于 Editor 的业务访问。本地 Agent API 尚未接入完整服务端身份校验，也不把 JWT 当作多租户授权机制。</p>
+<h2 id="future-security">共享服务前需要补齐</h2><ul><li>服务端身份认证与 Workspace 级授权。</li><li>用户、组织和 Workspace 的归属关系及数据隔离。</li><li>Runtime 凭据隔离、工具授权、资源配额和审计。</li><li>多副本需要的共享持久化、幂等与分布式调度。</li></ul><div class="callout warn"><p>不要把当前本地服务直接作为多人生产服务部署。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#agent">智能体 →</a><a href="#daemon-runtime">守护进程与运行时 →</a></div></div></article>
+<article class="article" id="page-agent" data-title="智能体">
+<p class="crumb">文档<span>/</span>智能体</p><p class="eyebrow">智能体</p><h1>智能体</h1><p class="lead">当前默认使用 Claude Agent SDK。Agent 身份、工具边界和 Session 续接由本机 Daemon 管理；Web 不直接连接模型服务。</p>
+<h2 id="claude-default">默认：Claude Agent</h2><p>Daemon 通过 Claude Agent SDK 的 query 执行模型交互。新对话创建 Claude Session；继续对话时，Go API 提供保存的 Session ID，Daemon 用它请求续接。</p><p>系统指令将 Agent 定义为自动化编辑 Agent：理解 Editor 导出的 ai-meta 和 Vue 工作区，按目标生成可验证的 Patch，并经 Editor 人工确认交付。它不是通用系统管理员，不能绕过 Editor 审核发布页面。</p>
+<h2 id="runtime-tools">模型与工具</h2><p>模型服务使用本机明确配置的 Anthropic API 风格凭据。当前工具包含只读文件检索、操作系统沙箱内 Bash，以及由 Daemon 提供的 deliver_patch、ask_user 等工作台工具。本机其他插件与工具配置不会自动继承。</p>
+<h2 id="more-runtimes">后续方向：不同 Runtime</h2><p>未来可在 Runtime 接口边界增加不同 Agent SDK 或 CLI Runtime。当前已实现链路仍是 Claude Agent SDK；Provider、模型和 Runtime 是不同层次，切换模型服务不意味着已经支持其他 Runtime。</p><div class="callout"><p>Session ID 属于具体 Runtime 的会话机制。不同 Runtime 间不能假定 ID 可迁移，跨 Runtime 需要显式上下文交接设计。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#skills-mcp">Skills / MCP →</a><a href="#run">运行 →</a></div></div></article>
+<article class="article" id="page-skills-mcp" data-title="Skills / MCP">
+<p class="crumb">文档<span>/</span>智能体</p><p class="eyebrow">智能体</p><h1>Skills / MCP</h1><p class="lead">当前提供项目内置 Agent 指令与 Runtime Tools，不会自动继承开发者本机的全部 Skill 或 MCP 配置。</p>
+<h2 id="built-in">当前内置能力</h2><p>Daemon 随运行注入自动化编辑 Agent 的身份、Patch 边界及依赖安装与验证要求。Daemon 管理的 MCP 工具包括向 Editor 提交 Patch、向用户提问等工作台能力。</p><p>工具请求经 Go API 和 Web 传递。Patch 需由用户在 Editor 审阅和保存，服务端确认新 Revision 后才向 Agent 返回成功。</p>
+<h2 id="not-inherited">不会自动继承本机配置</h2><p>用户全局 Skill、Claude 插件和 .mcp.json 不会因本项目启动 Runtime 而自动挂载，以免无意继承宿主权限、凭据或执行范围。独立启动的 MCP Server 也需要单独的沙箱边界。</p>
+<h2 id="dynamic-roadmap">后续方向：动态加载</h2><p>后续可建设按 Workspace 授权的能力目录，支持动态加载外部 Skill、CLI MCP，以及经审核接入的 SSE MCP Client / Server。每种能力都应明确来源、工具权限、网络访问、凭据范围和交付范围，再由用户或管理员显式授权。</p><div class="callout warn"><p>动态 Skill 加载、通用 MCP 目录和 SSE MCP 接入目前均属规划，不是已交付能力。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#run">运行 →</a><a href="#daemon-runtime">守护进程与运行时 →</a></div></div></article>
+<article class="article" id="page-run" data-title="运行">
+<p class="crumb">文档<span>/</span>运行时与执行</p><p class="eyebrow">运行时与执行</p><h1>运行</h1><p class="lead">Run 表示一次执行，不是长期会话。一个 Workspace 可通过多个 Session 开展不同对话，刷新后仍能回到对应 Session 查看和继续。</p>
+<h2 id="create-run">发起与恢复</h2><p>用户发送消息后，Web 请求 Go API 创建 Run。可以继续最近 Session、切换历史 Session 或新建对话。Go 保存 Workspace 与 Session 绑定及运行历史；对话正文从 Claude 本地 Session 记录重建。</p><p>运行状态、文本增量、工具请求和最终结果通过 SSE 推送。刷新页面后，Web 恢复 Session、消息和未完成工具请求，再订阅活动 Run。</p>
+<h2 id="followups">FollowUp、Steering 与取消</h2><p>运行期间的新消息默认进入 FollowUp；用户明确选择引导时可作为 Steering 发送给活动 Runtime。消息由 Go API 记录并按运行状态处理。取消动作请求 Daemon 停止 Runtime，并更新 Run 终态。</p>
+<h2 id="tool-result">工具结果与交付</h2><p>如果 Agent 请求 deliver_patch，Editor 审阅并保存后，Web 将确认过的 Revision 回传。Go 校验 Revision 后，工具结果才返回 Daemon。送达状态不确定时会保留记录供核对，避免静默重复执行。</p><div class="callout ok"><p>Run 完成只说明这一轮执行结束；用户仍可在同一 Session 中继续对话。</p></div><div class="next"><p>接下来</p><div class="next-links"><a href="#daemon-runtime">守护进程与运行时 →</a><a href="./auto-system-agent-architecture-map.html">架构图 ↗</a></div></div></article>
+<article class="article" id="page-daemon-runtime" data-title="守护进程与运行时">
+<p class="crumb">文档<span>/</span>运行时与执行</p><p class="eyebrow">运行时与执行</p><h1>守护进程与运行时</h1><p class="lead">本地 Daemon 是 Go API 与 Agent Runtime 之间的执行桥梁。它管理执行进程和工具交互，但不拥有长期 Workspace 或 Session 记录。</p>
+<h2 id="daemon-role">Daemon 职责</h2><p>TypeScript Daemon 监听本机回环地址，接收 Go API 的 Run 请求，检查工作区路径，启动 Claude Agent SDK Runtime，并把 SSE 事件、工具请求和终态返回给 Go API。它也负责取消执行、限制并发及托管 Runtime Tools。</p><p>浏览器经 Web BFF 与 Go API 通信，不直接访问 Daemon 内部接口。</p>
+<h2 id="cwd">稳定工作目录</h2><p>每个 Workspace 有稳定的 Agent 根目录。Editor 快照以只读形式位于 workspace/current/；Notes、Memory 和 Claude 运行时状态各自位于快照之外。更新 Revision 不需要更换 cwd。</p><p>Bash 在操作系统沙箱中执行。SDK 直接的 Write / Edit 工具不开放；Editor 变更必须通过范围受限的 Patch 和人工审阅完成。</p>
+<h2 id="restart">进程与恢复边界</h2><div class="table-wrap"><table><thead><tr><th>状态</th><th>Daemon 重启后</th><th>说明</th></tr></thead><tbody><tr><td>活动 Runtime</td><td>不恢复</td><td>原 Run 中断，需要新 Run。</td></tr><tr><td>内存事件缓冲</td><td>不恢复</td><td>Daemon 进程内的事件重放消失。</td></tr><tr><td>Go Workspace / Session 绑定</td><td>保留</td><td>由本地 Go Store 持久化。</td></tr><tr><td>Claude Session 文件</td><td>保留</td><td>新 Runtime 可尝试续接 Session。</td></tr><tr><td>Editor Revision</td><td>保留</td><td>由 Go API 的本地工作区存储管理。</td></tr></tbody></table></div><p>Session 可恢复不代表 Run 可恢复：新 Runtime 能继续对话上下文，但不会自动恢复旧子进程、外部副作用或不确定的工具调用。</p>
+<h2 id="deployment">部署边界</h2><p>当前系统面向可信任的本地单用户开发。未来可以将 API 与 Daemon 放在服务器，为工作区提供隔离执行环境；此前还需补齐身份认证、共享持久化、分布式调度与幂等、配额、密钥隔离和沙箱网络策略。</p><div class="callout warn"><p>本地 Workspace + Runtime 与云端 Pod 只是部署形态上的类比，不代表当前已经具备 Pod 的隔离、弹性或故障恢复语义。</p></div><div class="next"><p>继续阅读</p><div class="next-links"><a href="#concepts">核心概念 →</a><a href="./auto-system-agent-architecture-map.html">查看 Mermaid 架构图 ↗</a></div></div></article>
+</main><aside class="toc"><strong>本页目录</strong><nav id="toc"></nav></aside>
+</div>
+<script>
+(()=>{const pages=[...document.querySelectorAll('.article')],links=[...document.querySelectorAll('[data-link]')],toc=document.querySelector('#toc'),menu=document.querySelector('.menu'),sidebar=document.querySelector('.sidebar');let current='';function show(){let id=location.hash.slice(1);if(!pages.some(p=>p.id==='page-'+id))id='quickstart';if(id===current)return;current=id;const page=document.getElementById('page-'+id);pages.forEach(p=>p.classList.toggle('active',p===page));links.forEach(a=>a.classList.toggle('active',a.dataset.link===id));document.title=page.dataset.title+' · Auto System Agent 文档';toc.replaceChildren();page.querySelectorAll('h2[id],h3[id]').forEach(h=>{const a=document.createElement('a');a.href='#'+id;a.textContent=h.textContent;a.addEventListener('click',e=>{e.preventDefault();h.scrollIntoView({behavior:'smooth'});history.replaceState(null,'','#'+id)});toc.append(a)});window.scrollTo(0,0)}window.addEventListener('hashchange',show);menu.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')==='true';menu.setAttribute('aria-expanded',String(!open));sidebar.style.maxHeight=open?'190px':'none'});links.forEach(a=>a.addEventListener('click',()=>{if(innerWidth<=650)sidebar.style.maxHeight='190px'}));show()})();
+</script>
 </body>
 </html>
