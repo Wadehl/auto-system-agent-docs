@@ -1,0 +1,37 @@
+/**
+ * 仅覆盖少量品牌色；页面布局、导航和目录使用 Docusaurus 默认文档主题。
+ */
+:root {
+  --ifm-color-primary: #356ac3;
+  --ifm-color-primary-dark: #2f5fae;
+  --ifm-color-primary-darker: #2c59a4;
+  --ifm-color-primary-darkest: #244a87;
+  --ifm-color-primary-light: #4a7acb;
+  --ifm-color-primary-lighter: #5683d0;
+  --ifm-color-primary-lightest: #7398da;
+  --ifm-code-font-size: 92%;
+}
+
+[data-theme='light'] .docusaurus-mermaid-container {
+  background: #fff;
+}
+
+.markdown img[alt*='工作区共享唯一当前快照'] {
+  display: block;
+  width: 100%;
+  max-width: 820px;
+  margin: 1.5rem auto 0.5rem;
+  border-radius: 12px;
+}
+
+.concept-caption {
+  margin: 0 auto 1.5rem;
+  max-width: 820px;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.mermaid {
+  margin: 1.5rem 0;
+}
